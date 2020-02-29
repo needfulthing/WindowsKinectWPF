@@ -129,7 +129,7 @@ namespace Microsoft.Samples.Kinect.DepthBasics
 			}
 			Emgu.CV.CvInvoke.NamedWindow("Emgu Window");
 			backSubDepth = new Emgu.CV.BackgroundSubtractorKNN(20, 1000, false);
-			backSubRgb = new Emgu.CV.BackgroundSubtractorKNN(20, 1000, false);
+			backSubRgb = new Emgu.CV.BackgroundSubtractorKNN(200, 70, false);
 		}
 
 		/// <summary>
@@ -164,10 +164,10 @@ namespace Microsoft.Samples.Kinect.DepthBasics
 					var inputImg = bitmap.ToImage<Emgu.CV.Structure.Bgr, byte>();
 					//Emgu.CV.CvInvoke.Imshow("Emgu Window", inputImg);
 					//var outputImg = new Mat(inputImg.Width, inputImg.Height, Emgu.CV.CvEnum.DepthType.Cv8U, 3);
-					// CvInvoke.Erode(inputImg, inputImg, null, new System.Drawing.Point(-1, -1), 10, Emgu.CV.CvEnum.BorderType.Default, new Emgu.CV.Structure.MCvScalar(1));
 					
 					Emgu.CV.BackgroundSubtractorExtension.Apply(backSubRgb, inputImg, inputImg, -1);
-					CvInvoke.Threshold(inputImg, inputImg, 127, 255, Emgu.CV.CvEnum.ThresholdType.Binary);
+					//CvInvoke.Threshold(inputImg, inputImg, 127, 255, Emgu.CV.CvEnum.ThresholdType.Binary);
+					CvInvoke.Erode(inputImg, inputImg, null, new System.Drawing.Point(-1, -1), 3, Emgu.CV.CvEnum.BorderType.Default, new Emgu.CV.Structure.MCvScalar(1));
 					CvInvoke.MorphologyEx(inputImg, inputImg, Emgu.CV.CvEnum.MorphOp.Close, kernel, new System.Drawing.Point(-1, -1), 1, Emgu.CV.CvEnum.BorderType.Default, new Emgu.CV.Structure.MCvScalar(1));
 					
 					Emgu.CV.CvInvoke.Imshow("Emgu Window", inputImg);
