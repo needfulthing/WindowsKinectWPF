@@ -45,6 +45,12 @@ namespace Microsoft.Samples.Kinect.DepthBasics
 		private Emgu.CV.BackgroundSubtractorKNN backSubDepth, backSubRgb;
 
 		/// <summary>
+		/// Change this to switch from depth to rgb image.
+		/// </summary>
+		//bool MakeDepth = true;
+		bool MakeDepth = false;
+
+		/// <summary>
 		/// Initializes a new instance of the MainWindow class.
 		/// </summary>
 		public MainWindow()
@@ -74,23 +80,42 @@ namespace Microsoft.Samples.Kinect.DepthBasics
 
 			if (null != this.sensor)
 			{
-				// Turn on the depth stream to receive depth frames
-				this.sensor.DepthStream.Enable(DepthImageFormat.Resolution640x480Fps30);
+				if (MakeDepth)
+				{
+					// Turn on the depth stream to receive depth frames
+					this.sensor.DepthStream.Enable(DepthImageFormat.Resolution640x480Fps30);
 
-				// Allocate space to put the depth pixels we'll receive
-				this.depthPixels = new DepthImagePixel[this.sensor.DepthStream.FramePixelDataLength];
+					// Allocate space to put the depth pixels we'll receive
+					this.depthPixels = new DepthImagePixel[this.sensor.DepthStream.FramePixelDataLength];
 
-				// Allocate space to put the color pixels we'll create
-				this.colorPixels = new byte[this.sensor.DepthStream.FramePixelDataLength * sizeof(int)];
+					// Allocate space to put the color pixels we'll create
+					this.colorPixels = new byte[this.sensor.DepthStream.FramePixelDataLength * sizeof(int)];
 
-				// This is the bitmap we'll display on-screen
-				this.colorBitmap = new WriteableBitmap(this.sensor.DepthStream.FrameWidth, this.sensor.DepthStream.FrameHeight, 96.0, 96.0, PixelFormats.Bgr32, null);
+					// This is the bitmap we'll display on-screen
+					this.colorBitmap = new WriteableBitmap(this.sensor.DepthStream.FrameWidth, this.sensor.DepthStream.FrameHeight, 96.0, 96.0, PixelFormats.Bgr32, null);
 
-				// Set the image we display to point to the bitmap where we'll put the image data
-				this.Image.Source = this.colorBitmap;
+					// Set the image we display to point to the bitmap where we'll put the image data
+					this.Image.Source = this.colorBitmap;
 
-				// Add an event handler to be called whenever there is new depth frame data
-				this.sensor.DepthFrameReady += this.SensorDepthFrameReady;
+					// Add an event handler to be called whenever there is new depth frame data
+					this.sensor.DepthFrameReady += this.SensorDepthFrameReady;
+				} else
+				{
+					// Turn on the color stream to receive color frames
+					this.sensor.ColorStream.Enable(ColorImageFormat.RgbResolution640x480Fps30);
+
+					// Allocate space to put the pixels we'll receive
+					this.colorPixels = new byte[this.sensor.ColorStream.FramePixelDataLength];
+
+					// This is the bitmap we'll display on-screen
+					this.colorBitmap = new WriteableBitmap(this.sensor.ColorStream.FrameWidth, this.sensor.ColorStream.FrameHeight, 96.0, 96.0, PixelFormats.Bgr32, null);
+
+					// Set the image we display to point to the bitmap where we'll put the image data
+					this.Image.Source = this.colorBitmap;
+
+					// Add an event handler to be called whenever there is new color frame data
+					this.sensor.ColorFrameReady += this.SensorColorFrameReady;
+				}
 
 				// Start the sensor!
 				try
@@ -103,8 +128,8 @@ namespace Microsoft.Samples.Kinect.DepthBasics
 				}
 			}
 			Emgu.CV.CvInvoke.NamedWindow("Emgu Window");
-			backSubDepth = new Emgu.CV.BackgroundSubtractorKNN(50, 400, false);
-			//backSubRgb = new Emgu.CV.BackgroundSubtractorKNN(500, 50, false);
+			backSubDepth = new Emgu.CV.BackgroundSubtractorKNN(20, 1000, false);
+			backSubRgb = new Emgu.CV.BackgroundSubtractorKNN(20, 1000, false);
 		}
 
 		/// <summary>
@@ -117,6 +142,43 @@ namespace Microsoft.Samples.Kinect.DepthBasics
 			if (null != this.sensor)
 			{
 				this.sensor.Stop();
+			}
+		}
+
+		/// <summary>
+		/// Event handler for Kinect sensor's ColorFrameReady event
+		/// </summary>
+		/// <param name="sender">object sending the event</param>
+		/// <param name="e">event arguments</param>
+		private void SensorColorFrameReady(object sender, ColorImageFrameReadyEventArgs e)
+		{
+			using (ColorImageFrame colorFrame = e.OpenColorImageFrame())
+			{
+				if (colorFrame != null)
+				{
+					// Copy the pixel data from the image to a temporary array
+					colorFrame.CopyPixelDataTo(this.colorPixels);
+
+					var kernel = new Mat(9, 9, Emgu.CV.CvEnum.DepthType.Cv8U, 1);
+					var bitmap = BitmapFromWriteableBitmap(colorBitmap);
+					var inputImg = bitmap.ToImage<Emgu.CV.Structure.Bgr, byte>();
+					//Emgu.CV.CvInvoke.Imshow("Emgu Window", inputImg);
+					//var outputImg = new Mat(inputImg.Width, inputImg.Height, Emgu.CV.CvEnum.DepthType.Cv8U, 3);
+					// CvInvoke.Erode(inputImg, inputImg, null, new System.Drawing.Point(-1, -1), 10, Emgu.CV.CvEnum.BorderType.Default, new Emgu.CV.Structure.MCvScalar(1));
+					
+					Emgu.CV.BackgroundSubtractorExtension.Apply(backSubRgb, inputImg, inputImg, -1);
+					CvInvoke.Threshold(inputImg, inputImg, 127, 255, Emgu.CV.CvEnum.ThresholdType.Binary);
+					CvInvoke.MorphologyEx(inputImg, inputImg, Emgu.CV.CvEnum.MorphOp.Close, kernel, new System.Drawing.Point(-1, -1), 1, Emgu.CV.CvEnum.BorderType.Default, new Emgu.CV.Structure.MCvScalar(1));
+					
+					Emgu.CV.CvInvoke.Imshow("Emgu Window", inputImg);
+
+					// Write the pixel data into our bitmap
+					this.colorBitmap.WritePixels(
+						new Int32Rect(0, 0, this.colorBitmap.PixelWidth, this.colorBitmap.PixelHeight),
+						this.colorPixels,
+						this.colorBitmap.PixelWidth * sizeof(int),
+						0);
+				}
 			}
 		}
 
@@ -169,18 +231,18 @@ namespace Microsoft.Samples.Kinect.DepthBasics
 						// If we were outputting BGRA, we would write alpha here.
 						++colorPixelIndex;
 					}
-
 					var bitmap = BitmapFromWriteableBitmap(colorBitmap);
 					var inputImg = bitmap.ToImage<Emgu.CV.Structure.Bgr, byte>();
+					var outputImg = new Mat(inputImg.Width, inputImg.Height, Emgu.CV.CvEnum.DepthType.Cv8U, 3);
+					//var erodeMatrix = new Mat(9, 9, Emgu.CV.CvEnum.DepthType.Cv8U, 1);
 					//CvInvoke.Threshold(inputImg, inputImg, 127, 255, Emgu.CV.CvEnum.ThresholdType.Binary);
 					CvInvoke.Erode(inputImg, inputImg, null, new System.Drawing.Point(-1, -1), 10, Emgu.CV.CvEnum.BorderType.Default, new Emgu.CV.Structure.MCvScalar(1));
-					var outputImg = bitmap.ToImage<Emgu.CV.Structure.Bgr, byte>();
-					outputImg.SetZero();
+					//var outputImg = bitmap.ToImage<Emgu.CV.Structure.Bgr, byte>();
+					//outputImg.SetZero();
 					//Emgu.CV.CvInvoke.Imshow("Emgu Window", inputImg);
-					//var outputImgPtr = CvInvoke.cvCreateImage(new System.Drawing.Size(inputImg.Width, inputImg.Height), Emgu.CV.CvEnum.IplDepth.IplDepth32S, inputImg.NumberOfChannels);
-					//var outputImg = Emgu.CV.Image<Emgu.CV.Structure.Bgr, byte>.FromIplImagePtr(outputImgPtr);
+					//var outputImgPtr = CvInvoke.cvCreateImage(new System.Drawing.Size(inputImg.Width, inputImg.Height), Emgu.CV.CvEnum.IplDepth.IplDepth_8U, inputImg.NumberOfChannels);
+					//Emgu.CV.Image<Emgu.CV.Structure.Bgr, byte> outputImg = Emgu.CV.Image<Emgu.CV.Structure.Bgr, byte>.FromIplImagePtr(outputImgPtr);
 					//Emgu.CV.CvInvoke.Imshow("Emgu Window", outputImg);
-
 					Emgu.CV.BackgroundSubtractorExtension.Apply(backSubDepth, inputImg, outputImg, -1);
 					Emgu.CV.CvInvoke.Imshow("Emgu Window", outputImg);
 					//var outputBitmap = outputImg.AsBitmap<Emgu.CV.Structure.Bgr, byte>();
