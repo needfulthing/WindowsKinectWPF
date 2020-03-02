@@ -125,7 +125,7 @@ namespace Microsoft.Samples.Kinect.DepthBasics {
 			}
 			// not working? see https://github.com/opencv/opencv/issues/10438
 			// for workaround, setWindowProperty would be needed, but it seems not to be implemented in Emgu 4.2
-			Emgu.CV.CvInvoke.NamedWindow("Emgu Window", Emgu.CV.CvEnum.NamedWindowType.Fullscreen);
+			//Emgu.CV.CvInvoke.NamedWindow("Emgu Window", Emgu.CV.CvEnum.NamedWindowType.Fullscreen);
 			backSubDepth = new Emgu.CV.BackgroundSubtractorKNN(2000, 100, false);
 			backSubDepth2 = new BackgroundSubtractorMOG2(2000, 10, false);
 			backSubRgb = new Emgu.CV.BackgroundSubtractorKNN(200, 70, false);
@@ -196,7 +196,7 @@ namespace Microsoft.Samples.Kinect.DepthBasics {
 						// Division maps 2 byte value to a single byte value:
 						var b = ((ushort)shortArray[i]) / 258;
 						// Threshold values define the valid capture depth:
-						if (b > 128 || b < 64) {
+						if (b > 128 || b < 64) { // <- CHANGE THESE VALUES TO DEFINE THE DEPTH RANGE IN WHICH OBJECTS WILL BE TRACKED
 							byteArray[i] = 255; // valid depth
 						} else {
 							byteArray[i] = 0; // invalid depth
@@ -207,55 +207,23 @@ namespace Microsoft.Samples.Kinect.DepthBasics {
 					inputImg.Bytes = byteArray;
 					CvInvoke.MorphologyEx(inputImg, inputImg, Emgu.CV.CvEnum.MorphOp.Close, kernel9, new System.Drawing.Point(-1, -1), 1, Emgu.CV.CvEnum.BorderType.Default, new Emgu.CV.Structure.MCvScalar(1));
 
-					var outputImg = new Mat(inputImg.Width, inputImg.Height, Emgu.CV.CvEnum.DepthType.Cv8U, 3).ToImage<Emgu.CV.Structure.Bgr, byte>();
-					CvInvoke.CvtColor(inputImg, outputImg, Emgu.CV.CvEnum.ColorConversion.Gray2Rgb);
-					Emgu.CV.CvInvoke.Imshow("Emgu Window", outputImg);
+					var outputImg = new Image<Emgu.CV.Structure.Bgr, byte>(inputImg.Width, inputImg.Height);
 
-					/*
-					grayBitmap.WritePixels(
-						new Int32Rect(0, 0, grayBitmap.PixelWidth, grayBitmap.PixelHeight)
-						, inputImg.Bytes
-						, grayBitmap.PixelWidth * sizeof(byte)
-						, 0);
-					*/
-					/*
+					// Create tile image aka PostIt effect:
+					for (var i = 0; i < inputImg.Rows - 1; i+= 10) {
+						for (var j = 0; j < inputImg.Cols - 1; j += 10) {
+							var pix = inputImg.Data[i + 5, j + 5, 0];
+							if (pix != 0) {
+								outputImg.Draw(new System.Drawing.Rectangle(j, i, 8, 8), new Emgu.CV.Structure.Bgr(0, 255, 255), -1);
+							}
+						}
+					}
+
 					colorBitmap.WritePixels(
 						new Int32Rect(0, 0, colorBitmap.PixelWidth, colorBitmap.PixelHeight)
 						, outputImg.Bytes
-						, colorBitmap.PixelWidth * sizeof(byte) * 3
+						, colorBitmap.PixelWidth * 3
 						, 0);
-					*/
-					//var inputImg = bitmap.ToImage<Emgu.CV.Structure.Bgr, ushort>();
-
-					//var outputImg = new Mat(inputImg.Width, inputImg.Height, Emgu.CV.CvEnum.DepthType.Cv8U, 3);
-
-					//var erodeMatrix = new Mat(9, 9, Emgu.CV.CvEnum.DepthType.Cv8U, 1);
-					//CvInvoke.Threshold(inputImg, inputImg, 0, 200, Emgu.CV.CvEnum.ThresholdType.Binary);
-
-					//outputImg.SetZero();
-
-					// === Not working!
-					// var outputImgPtr = CvInvoke.cvCreateImage(new System.Drawing.Size(inputImg.Width, inputImg.Height), Emgu.CV.CvEnum.IplDepth.IplDepth_8U, inputImg.NumberOfChannels);
-					// Emgu.CV.Image<Emgu.CV.Structure.Bgr, byte> outputImg = Emgu.CV.Image<Emgu.CV.Structure.Bgr, byte>.FromIplImagePtr(outputImgPtr);
-					// ===
-
-					//Emgu.CV.BackgroundSubtractorExtension.Apply(backSubDepth2, inputImg, inputImg, -1);
-					//CvInvoke.Erode(inputImg, inputImg, null, new System.Drawing.Point(-1, -1), 1, Emgu.CV.CvEnum.BorderType.Default, new Emgu.CV.Structure.MCvScalar(1));
-					//CvInvoke.MorphologyEx(inputImg, inputImg, Emgu.CV.CvEnum.MorphOp.Close, kernel9, new System.Drawing.Point(-1, -1), 1, Emgu.CV.CvEnum.BorderType.Default, new Emgu.CV.Structure.MCvScalar(1));
-					//Emgu.CV.CvInvoke.Imshow("Emgu Window", inputImg);
-
-					//var outputBitmap = outputImg.AsBitmap<Emgu.CV.Structure.Bgr, byte>();
-					//var bitmapSource = System.Windows.Interop.Imaging.CreateBitmapSourceFromHBitmap(outputBitmap.GetHbitmap(), IntPtr.Zero, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
-					//var writeableBitmap = new WriteableBitmap(bitmapSource);
-					//colorBitmap = writeableBitmap;
-					// Write the pixel data into our bitmap
-					/*
-					this.colorBitmap.WritePixels(
-						new Int32Rect(0, 0, this.colorBitmap.PixelWidth, this.colorBitmap.PixelHeight),
-						this.colorPixels,
-						this.colorBitmap.PixelWidth * sizeof(int),
-						0);
-					*/
 				}
 			}
 		}
