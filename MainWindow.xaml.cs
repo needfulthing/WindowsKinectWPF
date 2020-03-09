@@ -87,6 +87,7 @@ namespace Microsoft.Samples.Kinect.DepthBasics {
 
 					// This is the bitmap we'll display on-screen
 					this.colorBitmap = new WriteableBitmap(this.sensor.DepthStream.FrameWidth, this.sensor.DepthStream.FrameHeight, 96.0, 96.0, PixelFormats.Bgr24, null);
+					//this.colorBitmap = new WriteableBitmap(this.sensor.DepthStream.FrameWidth, this.sensor.DepthStream.FrameHeight, 96.0, 96.0, PixelFormats.Gray8, null);
 
 					//this.grayBitmap = new WriteableBitmap(this.sensor.DepthStream.FrameWidth, this.sensor.DepthStream.FrameHeight, 96.0, 96.0, PixelFormats.Gray8, null);
 
@@ -193,11 +194,13 @@ namespace Microsoft.Samples.Kinect.DepthBasics {
 					// The single byte value is then filled into a byte array from which a new Image<Emgu.CV.Structure.Gray, byte>
 					// is created in the next step:
 					for (var i = 0; i < shortArray.Length; i++) {
-						// Division maps 2 byte value to a single byte value:
+						// Division maps 16 bit value to a 8 bit value:
 						var b = ((ushort)shortArray[i]) / 258;
 						// Threshold values define the valid capture depth:
-						if (b > 128 || b < 64) { // <- CHANGE THESE VALUES TO DEFINE THE DEPTH RANGE IN WHICH OBJECTS WILL BE TRACKED
+						//if (b > 128 || b < 64) { // <- CHANGE THESE VALUES TO DEFINE THE DEPTH RANGE IN WHICH OBJECTS WILL BE TRACKED
+						if (b < 96) {
 							byteArray[i] = 255; // valid depth
+							//byteArray[i] = (byte)b;
 						} else {
 							byteArray[i] = 0; // invalid depth
 						}
@@ -207,9 +210,9 @@ namespace Microsoft.Samples.Kinect.DepthBasics {
 					inputImg.Bytes = byteArray;
 					CvInvoke.MorphologyEx(inputImg, inputImg, Emgu.CV.CvEnum.MorphOp.Close, kernel9, new System.Drawing.Point(-1, -1), 1, Emgu.CV.CvEnum.BorderType.Default, new Emgu.CV.Structure.MCvScalar(1));
 
+					// Create tile image aka PostIt effect:
 					var outputImg = new Image<Emgu.CV.Structure.Bgr, byte>(inputImg.Width, inputImg.Height);
 
-					// Create tile image aka PostIt effect:
 					for (var i = 0; i < inputImg.Rows - 1; i+= 10) {
 						for (var j = 0; j < inputImg.Cols - 1; j += 10) {
 							var pix = inputImg.Data[i + 5, j + 5, 0];
@@ -219,6 +222,7 @@ namespace Microsoft.Samples.Kinect.DepthBasics {
 						}
 					}
 
+					// Write pixels of outputImg to output bitmap form image:
 					colorBitmap.WritePixels(
 						new Int32Rect(0, 0, colorBitmap.PixelWidth, colorBitmap.PixelHeight)
 						, outputImg.Bytes
