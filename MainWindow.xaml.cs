@@ -49,6 +49,10 @@ namespace Microsoft.Samples.Kinect.DepthBasics {
 		short[] shortArray;
 		byte[] byteArray;
 		Mat kernel9;
+		bool showText = true;
+		TimeSpan TextIntervalTime = new TimeSpan(0, 1, 0);
+		DateTime StartTime;
+		int TextYPos = 0;
 
 		/// <summary>
 		/// Initializes a new instance of the MainWindow class.
@@ -117,6 +121,8 @@ namespace Microsoft.Samples.Kinect.DepthBasics {
 					this.sensor.ColorFrameReady += this.SensorColorFrameReady;
 				}
 
+				StartTime = DateTime.Now;
+
 				// Start the sensor!
 				try {
 					this.sensor.Start();
@@ -154,7 +160,6 @@ namespace Microsoft.Samples.Kinect.DepthBasics {
 				if (colorFrame != null) {
 					// Copy the pixel data from the image to a temporary array
 					colorFrame.CopyPixelDataTo(this.colorPixels);
-
 
 					var bitmap = BitmapFromWriteableBitmap(colorBitmap);
 					var inputImg = bitmap.ToImage<Emgu.CV.Structure.Bgr, byte>();
@@ -198,21 +203,36 @@ namespace Microsoft.Samples.Kinect.DepthBasics {
 						var b = ((ushort)shortArray[i]) / 258;
 						// Threshold values define the valid capture depth:
 						//if (b > 128 || b < 64) { // <- CHANGE THESE VALUES TO DEFINE THE DEPTH RANGE IN WHICH OBJECTS WILL BE TRACKED
-						if (b < 96) {
+						if (b < 96) { // captures objects more far away
 							byteArray[i] = 255; // valid depth
-							//byteArray[i] = (byte)b;
 						} else {
 							byteArray[i] = 0; // invalid depth
 						}
 					}
 
 					var inputImg = new Image<Emgu.CV.Structure.Gray, byte>(colorBitmap.PixelWidth, colorBitmap.PixelHeight);
-					inputImg.Bytes = byteArray;
-					CvInvoke.MorphologyEx(inputImg, inputImg, Emgu.CV.CvEnum.MorphOp.Close, kernel9, new System.Drawing.Point(-1, -1), 1, Emgu.CV.CvEnum.BorderType.Default, new Emgu.CV.Structure.MCvScalar(1));
-
-					// Create tile image aka PostIt effect:
 					var outputImg = new Image<Emgu.CV.Structure.Bgr, byte>(inputImg.Width, inputImg.Height);
 
+					if (!showText && DateTime.Now > StartTime + TextIntervalTime) {
+						showText = true;
+						TextYPos = -450;
+					}
+					if (showText) {
+						inputImg.Draw("HAPPY", new System.Drawing.Point(100, TextYPos + 100), Emgu.CV.CvEnum.FontFace.HersheyPlain, 8, new Emgu.CV.Structure.Gray(255), 15);
+						inputImg.Draw("BIRTHDAY", new System.Drawing.Point(10, TextYPos + 240), Emgu.CV.CvEnum.FontFace.HersheyPlain, 8, new Emgu.CV.Structure.Gray(255), 15);
+						inputImg.Draw("POST-IT", new System.Drawing.Point(40, TextYPos + 380), Emgu.CV.CvEnum.FontFace.HersheyPlain, 8, new Emgu.CV.Structure.Gray(255), 15);
+						TextYPos += 4;
+						if (TextYPos >= 0) {
+							System.Threading.Thread.Sleep(3000);
+							showText = false;
+							StartTime = DateTime.Now;
+						}
+					} else {
+						inputImg.Bytes = byteArray;
+						CvInvoke.MorphologyEx(inputImg, inputImg, Emgu.CV.CvEnum.MorphOp.Close, kernel9, new System.Drawing.Point(-1, -1), 1, Emgu.CV.CvEnum.BorderType.Default, new Emgu.CV.Structure.MCvScalar(1));
+					}
+
+					// Create tile image aka PostIt effect:
 					for (var i = 0; i < inputImg.Rows - 1; i+= 10) {
 						for (var j = 0; j < inputImg.Cols - 1; j += 10) {
 							var pix = inputImg.Data[i + 5, j + 5, 0];
@@ -221,6 +241,7 @@ namespace Microsoft.Samples.Kinect.DepthBasics {
 							}
 						}
 					}
+					
 
 					// Write pixels of outputImg to output bitmap form image:
 					colorBitmap.WritePixels(
