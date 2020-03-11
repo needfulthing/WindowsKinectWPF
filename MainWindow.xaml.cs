@@ -193,7 +193,7 @@ namespace Microsoft.Samples.Kinect.DepthBasics {
 				if (depthFrame != null) {
 					depthFrame.CopyPixelDataTo(shortArray);
 
-					// The depth data from Kinect comes in a 2 byte (typed as a signed short) value for each pixel with the first 3 bit being skeleton info
+					C The depth data from Kinect comes in a 2 byte (typed as a signed short) value for each pixel with the first 3 bit being skeleton info
 					// (all zero when not activated) and the last 13 bit being the depth value. The next step ignores
 					// the state of the 3 less significant skeleton bits and converts the whole 2 byte value to a single unsigned byte value.
 					// The single byte value is then filled into a byte array from which a new Image<Emgu.CV.Structure.Gray, byte>
@@ -213,24 +213,6 @@ namespace Microsoft.Samples.Kinect.DepthBasics {
 					var inputImg = new Image<Emgu.CV.Structure.Gray, byte>(colorBitmap.PixelWidth, colorBitmap.PixelHeight);
 					var outputImg = new Image<Emgu.CV.Structure.Bgr, byte>(inputImg.Width, inputImg.Height);
 
-					if (!showText && DateTime.Now > StartTime + TextIntervalTime) {
-						showText = true;
-						TextYPos = -450;
-					}
-					if (showText) {
-						inputImg.Draw("HAPPY", new System.Drawing.Point(100, TextYPos + 100), Emgu.CV.CvEnum.FontFace.HersheyPlain, 8, new Emgu.CV.Structure.Gray(255), 15);
-						inputImg.Draw("BIRTHDAY", new System.Drawing.Point(10, TextYPos + 240), Emgu.CV.CvEnum.FontFace.HersheyPlain, 8, new Emgu.CV.Structure.Gray(255), 15);
-						inputImg.Draw("POST-IT", new System.Drawing.Point(40, TextYPos + 380), Emgu.CV.CvEnum.FontFace.HersheyPlain, 8, new Emgu.CV.Structure.Gray(255), 15);
-						TextYPos += 4;
-						if (TextYPos >= 0) {
-							System.Threading.Thread.Sleep(3000);
-							showText = false;
-							StartTime = DateTime.Now;
-						}
-					} else {
-						inputImg.Bytes = byteArray;
-						CvInvoke.MorphologyEx(inputImg, inputImg, Emgu.CV.CvEnum.MorphOp.Close, kernel9, new System.Drawing.Point(-1, -1), 1, Emgu.CV.CvEnum.BorderType.Default, new Emgu.CV.Structure.MCvScalar(1));
-					}
 
 					// Create tile image aka PostIt effect:
 					for (var i = 0; i < inputImg.Rows - 1; i+= 10) {
