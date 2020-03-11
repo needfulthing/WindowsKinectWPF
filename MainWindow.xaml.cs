@@ -204,9 +204,9 @@ namespace Microsoft.Samples.Kinect.DepthBasics {
 						// Threshold values define the valid capture depth:
 						//if (b > 128 || b < 64) { // <- CHANGE THESE VALUES TO DEFINE THE DEPTH RANGE IN WHICH OBJECTS WILL BE TRACKED
 						if (b < 96) { // captures objects more far away
-							byteArray[i] = 255; // valid depth
+							byteArray[i] = 0; // valid depth
 						} else {
-							byteArray[i] = 0; // invalid depth
+							byteArray[i] = 255; // invalid depth
 						}
 					}
 
@@ -237,7 +237,7 @@ namespace Microsoft.Samples.Kinect.DepthBasics {
 						for (var j = 0; j < inputImg.Cols - 1; j += 10) {
 							var pix = inputImg.Data[i + 5, j + 5, 0];
 							if (pix != 0) {
-								outputImg.Draw(new System.Drawing.Rectangle(j, i, 8, 8), new Emgu.CV.Structure.Bgr(0, 255, 255), -1);
+								outputImg.Draw(new System.Drawing.Rectangle(j, i, 8, 8), new Emgu.CV.Structure.Bgr(255, 255, 255), -1);
 							}
 						}
 					}
