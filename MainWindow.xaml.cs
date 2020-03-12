@@ -46,8 +46,9 @@ namespace Microsoft.Samples.Kinect.DepthBasics {
 		/// <summary>A kernal matrix used as a parameter in OpenCV functions.</summary>
 		Mat Kernel9;
 
-		/// <summary>If set, all events will be dropped.</summary>
-		bool TimerLock;
+		/// <summary>If set, depth image output will be dropped.</summary>
+		bool DisplayEventTriggered;
+		//private readonly object TimerLock = new object();
 
 		/// <summary>Initializes a new instance of the MainWindow class.</summary>
 		public MainWindow() {
@@ -59,18 +60,26 @@ namespace Microsoft.Samples.Kinect.DepthBasics {
 		/// <param name="e"></param>
 		/// <remarks>Currently only one event exists.</remarks>
 		public void DisplayEvent(Object source, System.Timers.ElapsedEventArgs e) {
-			//this.Dispatcher.Invoke(() => {
-				TimerLock = true;
-				for (var i = -400; i <= 0; i += 4) {
-					var inputImg = new Image<Emgu.CV.Structure.Gray, byte>(640, 480);
+			DisplayEventTriggered = true;
+			System.Threading.Thread.Sleep(50);
+
+			for (var i = -400; i <= 0; i += 4) {
+				// Updates to the UI image (and all other UI elements) are only possible in the UI thread.
+				// You can assign code from other event handlers to the UI thread by using Dispatcher.Invoke():
+				Dispatcher.Invoke(() => {
+					var inputImg = new Image<Emgu.CV.Structure.Gray, byte>(WpfBitmap.PixelWidth, WpfBitmap.PixelHeight);
+					//inputImg.Draw(new System.Drawing.Rectangle(0, 0, WpfBitmap.PixelWidth, WpfBitmap.PixelHeight), new Emgu.CV.Structure.Gray(0), -1);
 					inputImg.Draw("HAPPY", new System.Drawing.Point(100, i + 100), Emgu.CV.CvEnum.FontFace.HersheyPlain, 8, new Emgu.CV.Structure.Gray(255), 15);
 					inputImg.Draw("BIRTHDAY", new System.Drawing.Point(10, i + 240), Emgu.CV.CvEnum.FontFace.HersheyPlain, 8, new Emgu.CV.Structure.Gray(255), 15);
 					inputImg.Draw("POST-IT", new System.Drawing.Point(40, i + 380), Emgu.CV.CvEnum.FontFace.HersheyPlain, 8, new Emgu.CV.Structure.Gray(255), 15);
 					DrawImageToScreen(TileEffect(inputImg, new Emgu.CV.Structure.Bgr(0, 255, 255)));
-				}
-				System.Threading.Thread.Sleep(5000);
-				TimerLock = false;
-			//});
+				});
+				System.Threading.Thread.Sleep(10);
+				//inputImg.Draw(new System.Drawing.Rectangle(0, 0, 100, 100), new Emgu.CV.Structure.Gray(128), -1);
+				//DrawImageToScreen(TileEffect(inputImg, new Emgu.CV.Structure.Bgr(0, 255, 255)));
+			}
+			System.Threading.Thread.Sleep(2000);
+			DisplayEventTriggered = false;
 		}
 
 		/// <summary>Create tile image aka Post-It effect.</summary>
@@ -78,27 +87,17 @@ namespace Microsoft.Samples.Kinect.DepthBasics {
 		/// <returns>A Bgr output image with a tile effect drawn over all squares whose center point is not black (=0).</returns>
 		internal Image<Emgu.CV.Structure.Bgr, byte> TileEffect(Image<Emgu.CV.Structure.Gray, byte> inputImg, Emgu.CV.Structure.Bgr color) {
 			var outputImg = new Image<Emgu.CV.Structure.Bgr, byte>(inputImg.Width, inputImg.Height);
-			
+
 			// Draw 8x8 squares in a 10x10 grid:
 			for (var i = 0; i < inputImg.Rows - 1; i += 10) {
 				for (var j = 0; j < inputImg.Cols - 1; j += 10) {
 					var pix = inputImg.Data[i + 5, j + 5, 0];
 					if (pix != 0) {
-						outputImg.Draw(new System.Drawing.Rectangle(j, i, 8, 8), new Emgu.CV.Structure.Bgr(0, 255, 255), -1);
+						outputImg.Draw(new System.Drawing.Rectangle(j, i, 8, 8), color, -1);
 					}
 				}
 			}
 			return outputImg;
-		}
-
-		/// <summary>Write pixels to the <see cref="WriteableBitmap"/> that is linked to the WPF form image.</summary>
-		/// <param name="outputImg">The output image array.</param>
-		internal void DrawImageToScreen(Image<Emgu.CV.Structure.Bgr, byte> outputImg) {
-			WpfBitmap.WritePixels(
-				new Int32Rect(0, 0, WpfBitmap.PixelWidth, WpfBitmap.PixelHeight)
-				, outputImg.Bytes
-				, WpfBitmap.PixelWidth * 3
-				, 0);
 		}
 
 		/// <summary>Runs startup code after the WPF windows has been loaded.</summary>
@@ -198,13 +197,23 @@ namespace Microsoft.Samples.Kinect.DepthBasics {
 			}
 		}
 
+		/// <summary>Write pixels to the <see cref="WriteableBitmap"/> that is linked to the WPF form image.</summary>
+		/// <param name="outputImg">The output image array.</param>
+		internal void DrawImageToScreen(Image<Emgu.CV.Structure.Bgr, byte> outputImg) {
+			WpfBitmap.WritePixels(
+				new Int32Rect(0, 0, WpfBitmap.PixelWidth, WpfBitmap.PixelHeight)
+				, outputImg.Bytes
+				, WpfBitmap.PixelWidth * 3
+				, 0);
+		}
+
 		/// <summary>
 		/// Event handler for Kinect sensor's DepthFrameReady event
 		/// </summary>
 		/// <param name="sender">object sending the event</param>
 		/// <param name="e">event arguments</param>
 		private void SensorDepthFrameReady(object sender, DepthImageFrameReadyEventArgs e) {
-			if (TimerLock) return;
+			if (DisplayEventTriggered) return;
 			using (DepthImageFrame depthFrame = e.OpenDepthImageFrame()) {
 				if (depthFrame != null) {
 					depthFrame.CopyPixelDataTo(ShortArray);
@@ -232,7 +241,7 @@ namespace Microsoft.Samples.Kinect.DepthBasics {
 					var inputImg = new Image<Emgu.CV.Structure.Gray, byte>(WpfBitmap.PixelWidth, WpfBitmap.PixelHeight);
 					inputImg.Bytes = ByteArray;
 					CvInvoke.MorphologyEx(inputImg, inputImg, Emgu.CV.CvEnum.MorphOp.Close, Kernel9, new System.Drawing.Point(-1, -1), 1, Emgu.CV.CvEnum.BorderType.Default, new Emgu.CV.Structure.MCvScalar(1));
-					if (!TimerLock) DrawImageToScreen(TileEffect(inputImg, new Emgu.CV.Structure.Bgr(0, 255, 255)));
+					DrawImageToScreen(TileEffect(inputImg, new Emgu.CV.Structure.Bgr(0, 255, 255)));
 				}
 			}
 		}
