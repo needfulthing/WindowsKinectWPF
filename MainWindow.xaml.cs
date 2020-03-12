@@ -14,7 +14,7 @@ namespace Microsoft.Samples.Kinect.KinectProject {
 		/// <summary>The Kinect sensor object.</summary>
 		private KinectSensor Sensor;
 
-		/// <summary>The <see cref="WriteableBitmap"/> whose data is linked to the PWF output image.</summary>
+		/// <summary>The <see cref="WriteableBitmap"/> whose data is linked to the WPF output image.</summary>
 		private WriteableBitmap WpfBitmap;
 
 		/// <summary>This array receives the depth data from the camera.</summary>
@@ -46,7 +46,6 @@ namespace Microsoft.Samples.Kinect.KinectProject {
 
 		/// <summary>If set, depth image output will be dropped.</summary>
 		bool DisplayEventTriggered;
-		//private readonly object TimerLock = new object();
 
 		/// <summary>Initializes a new instance of the MainWindow class.</summary>
 		public MainWindow() {
@@ -73,8 +72,6 @@ namespace Microsoft.Samples.Kinect.KinectProject {
 					DrawImageToScreen(TileEffect(inputImg, new Emgu.CV.Structure.Bgr(0, 255, 255)));
 				});
 				System.Threading.Thread.Sleep(10);
-				//inputImg.Draw(new System.Drawing.Rectangle(0, 0, 100, 100), new Emgu.CV.Structure.Gray(128), -1);
-				//DrawImageToScreen(TileEffect(inputImg, new Emgu.CV.Structure.Bgr(0, 255, 255)));
 			}
 			System.Threading.Thread.Sleep(2000);
 			DisplayEventTriggered = false;
@@ -82,7 +79,7 @@ namespace Microsoft.Samples.Kinect.KinectProject {
 
 		/// <summary>Create tile image aka Post-It effect.</summary>
 		/// <param name="inputImg">The gray input image.</param>
-		/// <returns>A Bgr output image with a tile effect drawn over all squares whose center point is not black (=0).</returns>
+		/// <returns>A Bgr output image with a tile effect drawn over all squares whose center point is not black (= 0).</returns>
 		internal Image<Emgu.CV.Structure.Bgr, byte> TileEffect(Image<Emgu.CV.Structure.Gray, byte> inputImg, Emgu.CV.Structure.Bgr color) {
 			var outputImg = new Image<Emgu.CV.Structure.Bgr, byte>(inputImg.Width, inputImg.Height);
 
@@ -98,7 +95,7 @@ namespace Microsoft.Samples.Kinect.KinectProject {
 			return outputImg;
 		}
 
-		/// <summary>Runs startup code after the WPF windows has been loaded.</summary>
+		/// <summary>Runs startup code after the WPF window has been loaded.</summary>
 		/// <param name="sender">Object sending the event</param>
 		/// <param name="e">Event arguments</param>
 		private void WindowLoaded(object sender, RoutedEventArgs e) {
@@ -211,7 +208,11 @@ namespace Microsoft.Samples.Kinect.KinectProject {
 		/// <param name="sender">object sending the event</param>
 		/// <param name="e">event arguments</param>
 		private void SensorDepthFrameReady(object sender, DepthImageFrameReadyEventArgs e) {
+			// If display event is active, skip depth frame handling.
+			// You probably could also use this.Sensor.DepthStream.Disable() and after you're done Enable(DepthImageFormat.Resolution640x480Fps30)
+			// at the end of the DisplayEvent() handler instead of using this bool switch.
 			if (DisplayEventTriggered) return;
+
 			using (DepthImageFrame depthFrame = e.OpenDepthImageFrame()) {
 				if (depthFrame != null) {
 					depthFrame.CopyPixelDataTo(ShortArray);
@@ -227,8 +228,8 @@ namespace Microsoft.Samples.Kinect.KinectProject {
 						// Threshold values define the valid capture depth:
 						//if (b > 128 || b < 64) { // <- CHANGE THESE VALUES TO DEFINE THE DEPTH RANGE IN WHICH OBJECTS WILL BE TRACKED
 
-						// The next setting captures objects in a larger area than the values above, also removes the
-						// "white shadow" effect an object gets when it is to close to the camera:
+						// The next setting captures objects in a larger area than the values above and it also removes the
+						// "white shadow" effect a depth object gets when it is to close to the camera:
 						if (b < 96) {
 							ByteArray[i] = 255; // valid depth
 						} else {
@@ -238,6 +239,7 @@ namespace Microsoft.Samples.Kinect.KinectProject {
 
 					var inputImg = new Image<Emgu.CV.Structure.Gray, byte>(WpfBitmap.PixelWidth, WpfBitmap.PixelHeight);
 					inputImg.Bytes = ByteArray;
+					// The next OpenCV function closes gap areas in the captured depth image data:
 					CvInvoke.MorphologyEx(inputImg, inputImg, Emgu.CV.CvEnum.MorphOp.Close, Kernel9, new System.Drawing.Point(-1, -1), 1, Emgu.CV.CvEnum.BorderType.Default, new Emgu.CV.Structure.MCvScalar(1));
 					DrawImageToScreen(TileEffect(inputImg, new Emgu.CV.Structure.Bgr(0, 255, 255)));
 				}
@@ -248,29 +250,29 @@ namespace Microsoft.Samples.Kinect.KinectProject {
 		/// <param name="sender">object sending the event</param>
 		/// <param name="e">event arguments</param>
 		private void SensorColorFrameReady(object sender, ColorImageFrameReadyEventArgs e) {
+			// If display event is active, skip depth frame handling.
+			// You probably could also use this.Sensor.DepthStream.Disable() and after you're done Enable(DepthImageFormat.Resolution640x480Fps30)
+			// at the end of the DisplayEvent() handler instead of using this bool switch.
+			if (DisplayEventTriggered) return;
+
 			using (ColorImageFrame colorFrame = e.OpenColorImageFrame()) {
 				if (colorFrame != null) {
-					// Copy the pixel data from the image to a temporary array
+					// Copy the pixel data from the image to a temporary array:
 					colorFrame.CopyPixelDataTo(this.ColorPixels);
 
 					var bitmap = BitmapFromWriteableBitmap(WpfBitmap);
 					var inputImg = bitmap.ToImage<Emgu.CV.Structure.Bgr, byte>();
-					//Emgu.CV.CvInvoke.Imshow("Emgu Window", inputImg);
-					//var outputImg = new Mat(inputImg.Width, inputImg.Height, Emgu.CV.CvEnum.DepthType.Cv8U, 3);
 
 					Emgu.CV.BackgroundSubtractorExtension.Apply(BackSubRgb, inputImg, inputImg, -1);
 					//CvInvoke.Threshold(inputImg, inputImg, 127, 255, Emgu.CV.CvEnum.ThresholdType.Binary);
+					// This OpenCV function removes pixel noise:
 					CvInvoke.Erode(inputImg, inputImg, null, new System.Drawing.Point(-1, -1), 3, Emgu.CV.CvEnum.BorderType.Default, new Emgu.CV.Structure.MCvScalar(1));
+					// This OpenCV function closes gap areas in the captured color image data:
 					CvInvoke.MorphologyEx(inputImg, inputImg, Emgu.CV.CvEnum.MorphOp.Close, Kernel9, new System.Drawing.Point(-1, -1), 1, Emgu.CV.CvEnum.BorderType.Default, new Emgu.CV.Structure.MCvScalar(1));
-
-					Emgu.CV.CvInvoke.Imshow("Emgu Window", inputImg);
-
-					// Write the pixel data into our bitmap
-					this.WpfBitmap.WritePixels(
-						new Int32Rect(0, 0, this.WpfBitmap.PixelWidth, this.WpfBitmap.PixelHeight),
-						this.ColorPixels,
-						this.WpfBitmap.PixelWidth * sizeof(int),
-						0);
+					var grayImg = inputImg.Convert<Emgu.CV.Structure.Gray, byte>();
+					DrawImageToScreen(TileEffect(grayImg, new Emgu.CV.Structure.Bgr(0, 255, 255)));
+					// Test emgu window:
+					// Emgu.CV.CvInvoke.Imshow("Emgu Window", inputImg);
 				}
 			}
 		}
