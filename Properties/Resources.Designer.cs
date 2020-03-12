@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace Microsoft.Samples.Kinect.DepthBasics.Properties {
+namespace Microsoft.Samples.Kinect.KinectProject.Properties {
     using System;
     
     

@@ -4,7 +4,7 @@
 // </copyright>
 //------------------------------------------------------------------------------
 
-namespace Microsoft.Samples.Kinect.DepthBasics
+namespace Microsoft.Samples.Kinect.KinectProject
 {
     using System.Windows;
 

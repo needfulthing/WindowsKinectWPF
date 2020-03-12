@@ -1,6 +1,6 @@
 ﻿// NOTE: THIS CODE IS FOR KINECT 360 WITH KINECT SDK 1.8 AND NUGET EMGU 4.2
 
-namespace Microsoft.Samples.Kinect.DepthBasics {
+namespace Microsoft.Samples.Kinect.KinectProject {
 	using System;
 	using System.IO;
 	using System.Windows;
@@ -9,18 +9,13 @@ namespace Microsoft.Samples.Kinect.DepthBasics {
 	using Microsoft.Kinect;
 	using Emgu.CV;
 
-	/// <summary>
-	/// Interaction logic for MainWindow.xaml
-	/// </summary>
+	/// <summary>Interaction logic for MainWindow.xaml</summary>
 	public partial class MainWindow : Window {
 		/// <summary>The Kinect sensor object.</summary>
 		private KinectSensor Sensor;
 
 		/// <summary>The <see cref="WriteableBitmap"/> whose data is linked to the PWF output image.</summary>
 		private WriteableBitmap WpfBitmap;
-
-		/// <summary>This array receives the depth data from the camera.</summary>
-		private DepthImagePixel[] DepthPixels;
 
 		/// <summary>This array receives the color data from the camera.</summary>
 		private byte[] ColorPixels;
