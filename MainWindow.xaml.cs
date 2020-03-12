@@ -17,6 +17,9 @@ namespace Microsoft.Samples.Kinect.KinectProject {
 		/// <summary>The <see cref="WriteableBitmap"/> whose data is linked to the PWF output image.</summary>
 		private WriteableBitmap WpfBitmap;
 
+		/// <summary>This array receives the depth data from the camera.</summary>
+		private DepthImagePixel[] DepthPixels;
+
 		/// <summary>This array receives the color data from the camera.</summary>
 		private byte[] ColorPixels;
 
